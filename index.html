@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Caverne : L'Épreuve des Lumières</title>
+    <meta name="description" content="Jeu éducatif islamique : Le Bouclier des Lumières">
+    <title>Le Bouclier des Lumières</title>
     <style>
         body {
             margin: 0;
@@ -408,6 +409,7 @@
 
         const side = Math.floor(Math.random() * 4);
         let ex, ey;
+        // 0: Haut, 1: Droite, 2: Bas, 3: Gauche
         if (side === 0) { ex = player.x; ey = -60; }
         else if (side === 1) { ex = canvas.width + 60; ey = player.y; }
         else if (side === 2) { ex = player.x; ey = canvas.height + 60; }
@@ -506,7 +508,8 @@
     }
 
     function createShield(side) {
-        shields.push({ side: side, life: 60 });
+        // Durée du bouclier augmentée à 180 frames (env. 3 secondes) pour la visibilité
+        shields.push({ side: side, life: 180 });
     }
 
     // --- BOUCLE & RENDU ---
@@ -589,7 +592,9 @@
 
             ctx.beginPath();
             ctx.arc(0, 0, 70, -Math.PI/3, Math.PI/3);
-            ctx.strokeStyle = `rgba(241, 196, 15, ${s.life/60})`;
+            
+            // Opacité basée sur la vie restante du bouclier (max 180)
+            ctx.strokeStyle = `rgba(241, 196, 15, ${s.life/60})`; 
             ctx.lineWidth = 12;
             ctx.shadowColor = "gold";
             ctx.shadowBlur = 20;
