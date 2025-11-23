@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Caverne : L'Épreuve des Lumières</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 900px;
+            height: 650px;
+            border: 4px solid #1a1a1a;
+            box-shadow: 0 0 60px rgba(0,0,0,1);
+            background-color: #0a0a0a;
+            background-image: radial-gradient(circle at center, #222 0%, #000 90%);
+            overflow: hidden;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- UI & OVERLAYS --- */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 20;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; opacity: 0; pointer-events: none; }
+        .fade-in { animation: fadeIn 2s ease-in forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- TEXTES --- */
+        h1 {
+            font-size: 3rem;
+            color: #f1c40f;
+            text-shadow: 0 0 25px rgba(241, 196, 15, 0.6);
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        p { font-size: 1.3rem; max-width: 700px; line-height: 1.6; color: #ddd; margin-bottom: 30px; }
+
+        /* --- BOUTONS --- */
+        button {
+            padding: 18px 50px;
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #b8860b, #f1c40f);
+            border: none;
+            border-radius: 4px;
+            color: #000;
+            cursor: pointer;
+            font-weight: 800;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.3);
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        button:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(241, 196, 15, 0.6); color: #fff; }
+
+        /* --- INTRO SCENE --- */
+        #introScreen { background: black; justify-content: center; }
+        .hadith-text {
+            font-style: italic;
+            font-family: 'Georgia', serif;
+            font-size: 1.6rem;
+            color: #fff;
+            margin-bottom: 40px;
+            border-left: 4px solid #f1c40f;
+            padding-left: 20px;
+        }
+        .source-text { color: #888; font-size: 1rem; margin-top: 10px; display: block; text-align: right; }
+
+        /* --- HUD --- */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 20px; box-sizing: border-box;
+            display: flex; justify-content: space-between;
+            z-index: 10; pointer-events: none;
+            font-family: 'Courier New', monospace;
+        }
+        .hud-box {
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.4rem;
+        }
+
+        /* --- QUIZ & FEEDBACK --- */
+        #quizBox {
+            background: #151515;
+            border: 3px solid #f1c40f;
+            padding: 40px;
+            border-radius: 10px;
+            width: 700px;
+            box-shadow: 0 0 80px rgba(0,0,0,0.9);
+            position: relative;
+        }
+        #quizBox::before {
+            content: "DÉFENSE REQUISE";
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            background: #f1c40f; color: black; padding: 5px 15px; font-weight: bold;
+            font-size: 0.9rem; letter-spacing: 2px;
+        }
+        .choice-btn {
+            display: block; width: 100%; margin: 12px 0; padding: 15px 25px;
+            background: #2a2a2a; color: white; text-align: left;
+            border: 1px solid #444; cursor: pointer; font-size: 1.1rem;
+            transition: 0.2s;
+        }
+        .choice-btn:hover { background: #444; border-color: #f1c40f; color: #f1c40f; padding-left: 35px; }
+
+        /* Styles pour le Feedback */
+        .feedback-correct { color: #4cd137; font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; }
+        .feedback-wrong { color: #ff4444; font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; }
+        
+        .feedback-source { 
+            font-size: 1.1rem; 
+            color: #f1c40f; 
+            margin-bottom: 30px; 
+            font-style: italic; 
+            font-family: 'Georgia', serif;
+        }
+        
+        .feedback-detail { font-size: 1.2rem; color: #ccc; margin-bottom: 10px; }
+        .correct-answer-highlight { color: #fff; font-weight: bold; text-decoration: underline; }
+
+        /* --- VICTORY / GAMEOVER --- */
+        .end-stat { font-size: 1.8rem; font-weight: bold; margin: 10px 0; }
+        .victory-text { color: #4cd137; }
+        .defeat-text { color: #e84118; }
+        
+        .verse-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #f1c40f;
+            margin-top: 30px;
+            max-width: 80%;
+        }
+        .verse-text {
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .verse-ref {
+            font-size: 0.9rem;
+            color: #aaa;
+            text-align: right;
+            display: block;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div id="hud" class="hidden">
+            <div class="hud-box" style="color: #f1c40f;">Lumière: <span id="scoreVal">0</span></div>
+            <div class="hud-box" style="color: #fff;">Actions: <span id="progressVal">0/15</span></div>
+            <div class="hud-box" style="color: #ff4444;">Cœur: <span id="healthVal">100%</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="900" height="650"></canvas>
+
+        <div id="introScreen" class="overlay fade-in">
+            <div style="max-width: 700px;">
+                <p class="hadith-text">
+                    « Quatre-vingt-dix-neuf dragons recevront le pouvoir sur un infidèle dans sa tombe, et le mordront et le piqueront jusqu'à ce que l'Heure dernière arrive... »
+                    <span class="source-text">- Mishkat al-Masabih 134</span>
+                </p>
+                <p style="font-size: 1.1rem; color: #aaa;">
+                    Mais pour le Croyant, ses actions deviennent son bouclier.<br>
+                    Il vous faut bâtir une protection complète.
+                </p>
+                <button onclick="showMenu()">ENTRER DANS L'ÉPREUVE</button>
+            </div>
+        </div>
+
+        <div id="menuScreen" class="overlay hidden">
+            <h1>LE BOUCLIER DES LUMIÈRES</h1>
+            <p>
+                <strong style="color:#f1c40f">MISSION :</strong> Accomplissez 15 Bonnes Actions.<br>
+                À chaque menace, répondez correctement pour invoquer votre bouclier.<br><br>
+                Prenez votre temps pour répondre. La précision est la clé.
+            </p>
+            <button onclick="startGame()">COMMENCER</button>
+        </div>
+
+        <div id="quizOverlay" class="overlay hidden">
+            <div id="quizBox">
+                <div id="quizContent"></div>
+            </div>
+        </div>
+
+        <div id="endScreen" class="overlay hidden">
+            <h1 id="endTitle">TITRE</h1>
+            <p id="endMessage">Message</p>
+            <div class="end-stat" id="finalScoreDisplay">Score: 0</div>
+            
+            <div class="verse-container">
+                <div class="verse-text">
+                    « Le jour où tu verras les croyants et les croyantes, leur lumière courant devant eux et à leur droite... »
+                </div>
+                <span class="verse-ref">Coran, Sourate Al-Hadid (57:12)</span>
+            </div>
+
+            <button onclick="location.reload()">REJOUER</button>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Variables de jeu
+    let gameState = 'INTRO'; 
+    let score = 0;
+    let health = 100;
+    
+    // Variables de progression
+    const maxQuestions = 15;
+    let questionsAnswered = 0;
+    
+    let frameCount = 0;
+    let spawnRate = 180; 
+
+    // Joueur
+    const player = { x: 450, y: 325, radius: 30, color: '#fff', glow: 20 };
+    
+    // Entités
+    let enemies = [];
+    let shields = [];
+
+    // --- BANQUE DE 15 QUESTIONS UNIQUES ET RÉFÉRENCÉES ---
+    const originalQuestions = [
+        { 
+            q: "Que signifie la racine du mot 'Banuna' ?", 
+            choices: ["Détruire", "Construire / Bâtir", "Posséder", "Oublier"], 
+            correct: 1, 
+            ref: "Linguistique Arabe (Racine B-N-Y)" 
+        },
+        { 
+            q: "Dans la tombe, qui reste avec le défunt ?", 
+            choices: ["Sa famille", "Son argent", "Ses actions ('Amaluhu')", "Ses amis"], 
+            correct: 2, 
+            ref: "Rapporté par Al-Bukhari (6514) & Muslim" 
+        },
+        { 
+            q: "Quelle action protège le défunt à sa TÊTE ?", 
+            choices: ["La Zakat", "La Prière (Salat)", "Le Jeûne", "Le Hajj"], 
+            correct: 1, 
+            ref: "Hadith Sahih (Al-Albani, Sahih at-Targhib)" 
+        },
+        { 
+            q: "Quelle action protège le côté DROIT ?", 
+            choices: ["Le Jeûne (Siyam)", "La Zakat", "La Prière", "La médisance"], 
+            correct: 0, 
+            ref: "Hadith Sahih (Rapporté par Ahmad, Tabarani)" 
+        },
+        { 
+            q: "Quelle action protège le côté GAUCHE ?", 
+            choices: ["Le Sourire", "La Zakat (Aumône)", "Le Sport", "La lecture"], 
+            correct: 1, 
+            ref: "Hadith Sahih (Rapporté par Ahmad, Tabarani)" 
+        },
+        { 
+            q: "Qui monte la garde au niveau des PIEDS ?", 
+            choices: ["Les voyages", "Le sommeil", "Sadaqah & Liens familiaux", "Le travail"], 
+            correct: 2, 
+            ref: "Hadith Sahih (Rapporté par Ahmad, Tabarani)" 
+        },
+        { 
+            q: "Comment le Hadith décrit-il le visiteur (bonnes actions) ?", 
+            choices: ["Effrayant", "Visage magnifique et parfumé", "Silencieux", "Invisible"], 
+            correct: 1, 
+            ref: "Musnad Ahmad (Hadith de Al-Bara' ibn 'Azib)" 
+        },
+        { 
+            q: "Quelle phrase le croyant répète-t-il en voyant sa place au Paradis ?", 
+            choices: ["Seigneur, retarde l'Heure !", "Seigneur, fais venir l'Heure !", "Laisse-moi dormir", "Je veux revenir sur Terre"], 
+            correct: 1, 
+            ref: "Musnad Ahmad (Hadith de Al-Bara')" 
+        },
+        { 
+            q: "Que représentent les 99 dragons pour l'infidèle ?", 
+            choices: ["Ses mauvaises actions / Châtiment", "Des animaux réels", "Des gardiens", "Des illusions"], 
+            correct: 0, 
+            ref: "Mishkat al-Masabih (134)" 
+        },
+        { 
+            q: "Complétez : 'Nos actions sont nos ___ de l'au-delà'.", 
+            choices: ["Ennemis", "Souvenirs", "Enfants / Compagnons", "Cauchemars"], 
+            correct: 2, 
+            ref: "Analogie Pédagogique (Lien avec Banuna)" 
+        },
+        { 
+            q: "Que dit la Prière au châtiment qui approche ?", 
+            choices: ["Entre, je t'en prie", "Tu ne passeras pas par moi", "Je suis fatiguée", "Demande au Jeûne"], 
+            correct: 1, 
+            ref: "Hadith Sahih (Rapporté par Al-Hakim)" 
+        },
+        { 
+            q: "Quelle est la première chose sur laquelle l'homme sera interrogé ?",
+            choices: ["Sa Zakat", "La Prière", "Son Jeûne", "Ses voisins"],
+            correct: 1,
+            ref: "Sunan an-Nasa'i (465)"
+        },
+        { 
+            q: "Si la lumière s'éteint dans la tombe, c'est par manque de...", 
+            choices: ["Piles", "Bonnes actions", "Soleil", "Chance"], 
+            correct: 1, 
+            ref: "Coran 66:8 (Lumière des croyants)" 
+        },
+        { 
+            q: "Le 'Bouclier des Lumières' est construit par...", 
+            choices: ["Des briques", "La foi et les œuvres", "L'imagination", "Les dragons"], 
+            correct: 1, 
+            ref: "Concept : Amal Salih (Bonnes actions)" 
+        },
+        { 
+            q: "Le visiteur parfumé dit : 'Je suis tes...'", 
+            choices: ["Péchés", "Ancêtres", "Bonnes actions", "Pensées"], 
+            correct: 2, 
+            ref: "Musnad Ahmad (Hadith Sahih)" 
+        }
+    ];
+
+    let questionPool = [];
+    let currentQuestionData = null;
+    let currentEnemy = null;
+
+    // --- GESTION DU JEU ---
+
+    function showMenu() {
+        document.getElementById('introScreen').classList.add('hidden');
+        document.getElementById('menuScreen').classList.remove('hidden');
+    }
+
+    function startGame() {
+        document.getElementById('menuScreen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        gameState = 'PLAYING';
+        
+        // Reset Stats
+        score = 0;
+        health = 100;
+        questionsAnswered = 0;
+        enemies = [];
+        shields = [];
+        frameCount = 0;
+        
+        questionPool = originalQuestions.slice(); 
+        shuffleArray(questionPool);
+
+        updateHUD();
+        spawnEnemy();
+        
+        requestAnimationFrame(gameLoop);
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function getNextQuestion() {
+        if (questionPool.length === 0) {
+             questionPool = originalQuestions.slice();
+             shuffleArray(questionPool);
+        }
+        return questionPool.pop();
+    }
+
+    // --- ENNEMIS & QUIZ ---
+
+    function spawnEnemy() {
+        if (questionsAnswered >= maxQuestions) return;
+
+        const side = Math.floor(Math.random() * 4);
+        let ex, ey;
+        if (side === 0) { ex = player.x; ey = -60; }
+        else if (side === 1) { ex = canvas.width + 60; ey = player.y; }
+        else if (side === 2) { ex = player.x; ey = canvas.height + 60; }
+        else { ex = -60; ey = player.y; }
+
+        let speedBoost = questionsAnswered * 0.1; 
+
+        enemies.push({
+            x: ex, y: ey, side: side,
+            speed: 1.2 + speedBoost,
+            color: '#111'
+        });
+    }
+
+    function triggerQuiz(enemy) {
+        gameState = 'QUIZ';
+        currentEnemy = enemy;
+        currentQuestionData = getNextQuestion();
+
+        const box = document.getElementById('quizContent');
+        document.getElementById('quizOverlay').classList.remove('hidden');
+        
+        let html = `<h2 style="color: #f1c40f; margin-bottom: 25px; line-height:1.4;">${currentQuestionData.q}</h2>`;
+        html += `<div id="choicesContainer">`;
+        currentQuestionData.choices.forEach((c, i) => {
+            html += `<div class="choice-btn" onclick="processAnswer(${i})">${c}</div>`;
+        });
+        html += `</div>`;
+        
+        box.innerHTML = html;
+    }
+
+    // GESTION DU FEEDBACK
+    function processAnswer(selectedIndex) {
+        const isCorrect = (selectedIndex === currentQuestionData.correct);
+        const correctText = currentQuestionData.choices[currentQuestionData.correct];
+        const box = document.getElementById('quizContent');
+        const reference = currentQuestionData.ref;
+
+        let feedbackHtml = '';
+
+        if (isCorrect) {
+            feedbackHtml = `
+                <div class="feedback-correct">BONNE RÉPONSE !</div>
+                <div class="feedback-source">Source : ${reference}</div>
+                <button onclick="resumeGame(true)">CONTINUER</button>
+            `;
+        } else {
+            feedbackHtml = `
+                <div class="feedback-wrong">MAUVAISE RÉPONSE...</div>
+                <div class="feedback-detail">
+                    La bonne réponse était : <br>
+                    <span class="correct-answer-highlight">${correctText}</span>
+                </div>
+                <div class="feedback-source" style="margin-top:10px; color:#aaa;">Source : ${reference}</div>
+                <button onclick="resumeGame(false)">CONTINUER</button>
+            `;
+        }
+
+        box.innerHTML = feedbackHtml;
+    }
+
+    function resumeGame(wasCorrect) {
+        document.getElementById('quizOverlay').classList.add('hidden');
+
+        if (wasCorrect) {
+            score += 150;
+            questionsAnswered++;
+            createShield(currentEnemy.side);
+            removeEnemy(currentEnemy);
+        } else {
+            health -= 25;
+            player.color = '#ff3333';
+            setTimeout(() => player.color = '#fff', 300);
+            removeEnemy(currentEnemy);
+            
+            if (health <= 0) {
+                endGame(false);
+                return;
+            }
+        }
+        
+        currentEnemy = null;
+        
+        if (questionsAnswered >= maxQuestions) {
+            endGame(true);
+        } else {
+            gameState = 'PLAYING';
+            updateHUD();
+        }
+    }
+
+    function removeEnemy(e) {
+        const idx = enemies.indexOf(e);
+        if (idx > -1) enemies.splice(idx, 1);
+    }
+
+    function createShield(side) {
+        shields.push({ side: side, life: 60 });
+    }
+
+    // --- BOUCLE & RENDU ---
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+        
+        frameCount++;
+        
+        let currentSpawnRate = Math.max(60, spawnRate - (questionsAnswered * 5));
+        if (frameCount % currentSpawnRate === 0) spawnEnemy();
+
+        enemies.forEach(e => {
+            const dx = player.x - e.x;
+            const dy = player.y - e.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if(dist > 0) {
+                e.x += (dx/dist) * e.speed;
+                e.y += (dy/dist) * e.speed;
+            }
+
+            if (dist < 110) triggerQuiz(e);
+        });
+
+        for (let i=shields.length-1; i>=0; i--) {
+            shields[i].life--;
+            if(shields[i].life <= 0) shields.splice(i, 1);
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Joueur
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+        ctx.fillStyle = player.color;
+        ctx.shadowBlur = player.glow + Math.sin(Date.now()/200)*10;
+        ctx.shadowColor = (health < 50) ? "red" : "#f1c40f";
+        ctx.fill();
+        ctx.restore();
+
+        // Ennemis
+        enemies.forEach(e => {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            let angle = Math.atan2(player.y - e.y, player.x - e.x);
+            ctx.rotate(angle);
+            
+            ctx.beginPath();
+            ctx.moveTo(25, 0);
+            ctx.lineTo(-20, 15);
+            ctx.lineTo(-10, 0);
+            ctx.lineTo(-20, -15);
+            ctx.closePath();
+            
+            ctx.fillStyle = "#111";
+            ctx.strokeStyle = "#600";
+            ctx.lineWidth = 2;
+            ctx.fill(); ctx.stroke();
+            
+            ctx.fillStyle = "red";
+            ctx.beginPath(); ctx.arc(5, -5, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(5, 5, 3, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        });
+
+        // Boucliers
+        shields.forEach(s => {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            let r = 0;
+            if (s.side === 0) r = -Math.PI/2;
+            if (s.side === 1) r = 0;
+            if (s.side === 2) r = Math.PI/2;
+            if (s.side === 3) r = Math.PI;
+            ctx.rotate(r);
+
+            ctx.beginPath();
+            ctx.arc(0, 0, 70, -Math.PI/3, Math.PI/3);
+            ctx.strokeStyle = `rgba(241, 196, 15, ${s.life/60})`;
+            ctx.lineWidth = 12;
+            ctx.shadowColor = "gold";
+            ctx.shadowBlur = 20;
+            ctx.stroke();
+            ctx.restore();
+        });
+    }
+
+    function updateHUD() {
+        document.getElementById('scoreVal').innerText = score;
+        document.getElementById('healthVal').innerText = health + "%";
+        document.getElementById('progressVal').innerText = questionsAnswered + " / " + maxQuestions;
+    }
+
+    // --- FIN DE PARTIE ---
+
+    function endGame(victory) {
+        gameState = 'GAMEOVER';
+        const screen = document.getElementById('endScreen');
+        const title = document.getElementById('endTitle');
+        const msg = document.getElementById('endMessage');
+        
+        screen.classList.remove('hidden');
+        document.getElementById('finalScoreDisplay').innerText = "Score: " + score;
+        document.getElementById('hud').classList.add('hidden');
+
+        if (victory) {
+            title.innerText = "ÉPREUVE ACCOMPLIE";
+            title.className = "victory-text";
+            msg.innerText = "MachaAllah ! Vous avez bâti votre protection complète (15/15).\nVos actions sont désormais votre lumière.";
+        } else {
+            title.innerText = "LUMIÈRE ÉTEINTE";
+            title.className = "defeat-text";
+            msg.innerText = "Les ténèbres l'ont emporté avant la fin.\nIl faut renforcer ta Salat et tes actions pour être prêt.";
+        }
+    }
+
+    function gameLoop() {
+        if (gameState === 'PLAYING' || gameState === 'QUIZ') {
+            if (gameState === 'PLAYING') update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+</script>
+</body>
+</html>
